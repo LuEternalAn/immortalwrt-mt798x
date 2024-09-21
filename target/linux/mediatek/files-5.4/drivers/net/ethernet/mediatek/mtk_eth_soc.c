@@ -1382,7 +1382,7 @@ static int mtk_poll_rx(struct napi_struct *napi, int budget,
 
 	while (done < budget) {
 		struct net_device *netdev;
-		unsigned int pktlen;
+		unsigned int pktlen, *rxdcsum;
 		dma_addr_t dma_addr;
 		int mac;
 
@@ -1465,10 +1465,12 @@ static int mtk_poll_rx(struct napi_struct *napi, int budget,
 		skb->dev = netdev;
 		skb_put(skb, pktlen);
 
-		if ((!MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2) &&
-				  (trxd.rxd4 & eth->rx_dma_l4_valid)) ||
-		    (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2) &&
-				  (trxd.rxd3 & eth->rx_dma_l4_valid)))
+		if ((MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2)))
+			rxdcsum = &trxd.rxd3;
+		else
+			rxdcsum = &trxd.rxd4;
+
+		if (*rxdcsum & eth->rx_dma_l4_valid)
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 		else
 			skb_checksum_none_assert(skb);
